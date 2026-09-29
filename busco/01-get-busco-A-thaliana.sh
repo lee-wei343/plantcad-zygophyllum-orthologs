@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-mkdir -p ../out/busco
+mkdir -p out/busco
 
 busco -i ../data/A_thaliana/Arabidopsis_thaliana.TAIR10.pep.all.fa \
   -o ../out/busco/busco_A_thaliana \
