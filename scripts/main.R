@@ -295,6 +295,7 @@ if (make_plots) {
 }
 
 
+
 # Pairwise align ----------------------------------------------------------
 
 # Pairwise global alignment
@@ -329,4 +330,3 @@ busco$pid_align_scores <- pid_align_scores
 
 
 readr::write_tsv(busco, file = "out/conserved_go_annotated_braker.tsv")
-
