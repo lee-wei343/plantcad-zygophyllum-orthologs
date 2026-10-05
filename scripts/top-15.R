@@ -84,7 +84,7 @@ stopifnot(identical(at_exon_spans, at_exon_spans_trim))
 
 # Z stapffii --------------------------------------------------------------
 
-# zs = Z stapffii
+# zs = Zygophyllum stapffii
 zs_genome_path <- "data/Z_stapfii/Z_stapfii_genome.fa"
 if (!file.exists(paste0(zs_genome_path, ".fai"))) {
   indexFa(zs_genome_path)
@@ -252,6 +252,29 @@ if (write_fasta) {
   writeXStringSet(at_tx_seqs, filepath = "out/top15/tx_a_thaliana.fa")
 }
 
+# -------------------------------------------------------------------------
+
+at_tx_list <- list()
+current_tx <- at_exon_spans_trim[at_tx_id]
+region_start <- start(current_tx)
+
+current_tx_exons <- at_exons_by_busco_tx[[at_tx_id]]
+relative_exon_start <- start(current_tx_exons) - region_start + 1
+relative_exon_end   <- end(current_tx_exons) - region_start + 1
+
+header <- headers[at_tx_ids == at_tx_id]
+at_tx_list["A"] <- list(current_tx = current_tx,
+                             start = 1,
+                             end = width(current_tx),
+                             relative_exon_start,
+                             relative_exon_end,
+                             header = header)
+
+
+# -------------------------------------------------------------------------
+
+
+at_tx_list <- list()
 if (make_plots) {
   for (at_tx_id in at_tx_ids) {
     current_tx <- at_exon_spans_trim[at_tx_id]
@@ -271,6 +294,14 @@ if (make_plots) {
       exon_ends = relative_exon_end,
       title = header
     )
+    
+    at_tx_list[[at_tx_id]] <- list(current_tx = current_tx,
+                             start = 1,
+                             end = width(current_tx),
+                             relative_exon_start,
+                             relative_exon_end,
+                             header = header)
+    
     
     ggsave(
       filename = paste0(at_tx_id, ".png"),
@@ -328,6 +359,7 @@ if (write_fasta) {
   writeXStringSet(zs_tx_seqs, filepath = "out/top15/tx_z_stapffii.fa")
 }
 
+zs_tx_list <- list()
 if (make_plots) {
   for (zs_tx_id in zs_tx_ids) {
     current_tx <- zs_exon_spans_trim[zs_tx_id]
@@ -348,6 +380,13 @@ if (make_plots) {
       title = header
     )
     
+    zs_tx_list[[zs_tx_id]] <- list(current_tx = current_tx,
+                             start = 1,
+                             end = width(current_tx),
+                             relative_exon_start,
+                             relative_exon_end,
+                             header = header)
+    
     ggsave(
       filename = paste0(zs_tx_id, ".png"),
       plot = tx_plot,
@@ -360,6 +399,11 @@ if (make_plots) {
   }
 }
 
+
+# save the tx_lists -------------------------------------------------------
+
+saveRDS(object = at_tx_list, "out/top15/at_tx_list.rds")
+saveRDS(object = zs_tx_list, "out/top15/zs_tx_list.rds")
 
 # -------------------------------------------------------------------------
 
