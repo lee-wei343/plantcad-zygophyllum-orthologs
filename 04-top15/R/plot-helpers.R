@@ -41,7 +41,9 @@ make_tx_index <- function(id_file) {
   return(indexed)
 }
 
-plot_transcript_simple <- function(start, end, strand, exon_starts, exon_ends, title) {
+plot_transcript_simple <- function(start, end, strand, exon_starts, exon_ends,
+                                   title
+                                   ) {
   # flip minus strand, so both line up 5' to '3 
   if (strand == "-") {
     flipped_starts <- start + end - exon_ends
@@ -65,7 +67,9 @@ plot_transcript_simple <- function(start, end, strand, exon_starts, exon_ends, t
     theme_minimal()
 }
 
-plot_transcript_arrows <- function(start, end, strand, exon_starts, exon_ends, title) {
+plot_transcript_arrows <- function(start, end, strand, exon_starts, exon_ends,
+                                   title
+                                   ) {
   if (strand == "+") {
     direction <- 1
   } else {
