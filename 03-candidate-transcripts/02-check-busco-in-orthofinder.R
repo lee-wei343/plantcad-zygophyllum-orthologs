@@ -3,7 +3,7 @@ library(tidyverse)
 # Check BUSCOxBraker ------------------------------------------------------
 
 
-busco <- read_tsv("out/conserved_go_annotated_braker.tsv")
+busco <- read_tsv("03-candidate-transcripts/out/conserved_go_annotated_braker.tsv")
 ortho_zs_at <- read_tsv("02-orthofinder/Results_Sep29/Orthologues/Orthologues_Z_stapffii/Z_stapffii__v__A_thaliana.tsv")
 
 ortho_pairs <- ortho_zs_at |>
@@ -20,4 +20,4 @@ res <- busco_keys %in% ortho_keys
 
 busco$buscopair_in_orthofinderpair <- res
 
-write_tsv(busco, "out/conserved_go_annotated_braker_pairchecked.tsv")
+write_tsv(busco, "03-candidate-transcripts/out/conserved_go_annotated_braker_pairchecked.tsv")

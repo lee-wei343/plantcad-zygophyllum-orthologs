@@ -81,10 +81,68 @@ stopifnot(all(at_exon_spans_pre + flank_bp * 2 == width(at_exon_spans)))
 at_exon_spans_trim <- trim(at_exon_spans)
 stopifnot(identical(at_exon_spans, at_exon_spans_trim))
 
+at_tx_seqs <- getSeq(at_genome, at_exon_spans_trim)
+stopifnot(
+  length(at_exon_spans_trim) == length(at_tx_seqs),
+  identical(width(at_exon_spans_trim), width(at_tx_seqs))
+)
+
+at_tx_ids <- names(at_exon_spans_trim)
+at_chrom <- as.character(seqnames(at_exon_spans_trim))
+at_strand <- as.character(strand(at_exon_spans_trim))
+at_range <- paste0(
+  start(at_exon_spans_trim), "-",
+  end(at_exon_spans_trim)
+)
+at_n_exons_by_tx <- lengths(at_exons_by_busco_tx)
+
+headers <- paste0(
+  at_tx_ids, "|",
+  "chrom:", at_chrom, "|",
+  at_strand, "|",
+  at_range, "|",
+  "n_exons:", at_n_exons_by_tx, "|",
+  "flank:", flank_bp
+)
+
+names(at_tx_seqs) <- headers
+
+if (write_fasta) {
+  writeXStringSet(at_tx_seqs, filepath = "03-candidate-transcripts/out/tx_a_thaliana.fa")
+}
+
+if (make_plots) {
+  for (at_tx_id in at_tx_ids) {
+    current_tx <- at_exon_spans_trim[at_tx_id]
+    region_start <- start(current_tx)
+    current_tx_exons <- at_exons_by_busco_tx[[at_tx_id]]
+    relative_exon_start <- start(current_tx_exons) - region_start + 1
+    relative_exon_end <- end(current_tx_exons) - region_start + 1
+    header <- headers[startsWith(headers, at_tx_id)]
+    tx_plot <- plot_transcript(
+      start = 1,
+      end = width(current_tx),
+      strand = as.character(strand(current_tx)),
+      exon_starts = relative_exon_start,
+      exon_ends = relative_exon_end,
+      title = header
+    )
+    
+    ggsave(filename = paste0(at_tx_id, ".png"),
+           plot = tx_plot,
+           path = "03-candidate-transcripts/out/a_thaliana_tx_plots",
+           width = 10,
+           height = 2.5,
+           dpi = 300,
+           create.dir = TRUE
+    )
+  }
+}
+
 
 # Z stapffii --------------------------------------------------------------
 
-# zs = Zygophyllum stapffii
+# zs = Z stapffii
 zs_genome_path <- "data/Z_stapfii/Z_stapfii_genome.fa"
 if (!file.exists(paste0(zs_genome_path, ".fai"))) {
   indexFa(zs_genome_path)
@@ -171,154 +229,7 @@ stopifnot(all(width(zs_tx_spans) + (2 * flank_bp) == width(zs_exon_spans)))
 zs_exon_spans_trim <- trim(zs_exon_spans)
 stopifnot(identical(zs_exon_spans, zs_exon_spans_trim))
 
-# Pairwise align ----------------------------------------------------------
-
-# Pairwise global alignment
-dna_matrix <- nucleotideSubstitutionMatrix(
-  match = 2,
-  mismatch = -1,
-  baseOnly = TRUE
-  )
-
-alignment <- list()
-pw_align_scores <- numeric(nrow(busco))
-pid_align_scores <- numeric(nrow(busco))
-for (i in seq_len(nrow(busco))) {
-  at_tx_id <- paste0(busco$agic[i], ".1")
-  at_tx <- at_exon_spans_trim[at_tx_id]
-  at_tx_seq <- getSeq(at_genome, at_tx)
-  
-  zs_tx_id <- paste0(busco$braker_gene_id[i], ".t1")
-  zs_tx <- zs_exon_spans_trim[zs_tx_id]
-  zs_tx_seq <- getSeq(zs_genome_fa, zs_tx)
-  
-  global_align <- pairwiseAlignment(
-    at_tx_seq,
-    zs_tx_seq,
-    type = "global",
-    substitutionMatrix = dna_matrix,
-    gapOpening = 5, gapExtension = 1
-    )
-  alignment[[paste0(at_tx_id, "_vs_", zs_tx_id)]] <- global_align
-    
-  pw_align_scores[i] <- score(global_align)
-  pid_align_scores[i] <- pid(global_align)
-}
-
-busco$pw_align_scores <- pw_align_scores
-busco$pid_align_scores <- pid_align_scores
-
-busco_score_15 <- busco |>
-  top_n(15, pw_align_scores)
-
-dir.create(path = "out/top15")
-
-
-
-
-# -------------------------------------------------------------------------
-
-at_exon_spans_trim <- at_exon_spans_trim[names(at_exon_spans_trim) %in% paste0(busco_score_15$agic, ".1")]
-
-at_tx_seqs <- getSeq(at_genome, at_exon_spans_trim)
-stopifnot(
-  length(at_exon_spans_trim) == length(at_tx_seqs),
-  identical(width(at_exon_spans_trim), width(at_tx_seqs))
-)
-
-at_tx_ids <- names(at_exon_spans_trim)
-at_chrom  <- as.character(seqnames(at_exon_spans_trim))
-at_strand <- as.character(strand(at_exon_spans_trim))
-at_range  <- paste0(
-  start(at_exon_spans_trim), "-",
-  end(at_exon_spans_trim)
-)
-
-at_n_exons_by_tx <- lengths(at_exons_by_busco_tx[at_tx_ids])
-
-headers <- paste0(
-  at_tx_ids, "|",
-  "chrom:", at_chrom, "|",
-  at_strand, "|",
-  at_range, "|",
-  "n_exons:", at_n_exons_by_tx, "|",
-  "flank:", flank_bp
-)
-stopifnot(length(headers) == length(at_tx_seqs))
-
-names(at_tx_seqs) <- headers
-
-if (write_fasta) {
-  writeXStringSet(at_tx_seqs, filepath = "out/top15/tx_a_thaliana.fa")
-}
-
-# -------------------------------------------------------------------------
-
-at_tx_list <- list()
-current_tx <- at_exon_spans_trim[at_tx_id]
-region_start <- start(current_tx)
-
-current_tx_exons <- at_exons_by_busco_tx[[at_tx_id]]
-relative_exon_start <- start(current_tx_exons) - region_start + 1
-relative_exon_end   <- end(current_tx_exons) - region_start + 1
-
-header <- headers[at_tx_ids == at_tx_id]
-at_tx_list["A"] <- list(current_tx = current_tx,
-                             start = 1,
-                             end = width(current_tx),
-                             relative_exon_start,
-                             relative_exon_end,
-                             header = header)
-
-
-# -------------------------------------------------------------------------
-
-
-at_tx_list <- list()
-if (make_plots) {
-  for (at_tx_id in at_tx_ids) {
-    current_tx <- at_exon_spans_trim[at_tx_id]
-    region_start <- start(current_tx)
-    
-    current_tx_exons <- at_exons_by_busco_tx[[at_tx_id]]
-    relative_exon_start <- start(current_tx_exons) - region_start + 1
-    relative_exon_end   <- end(current_tx_exons) - region_start + 1
-    
-    header <- headers[at_tx_ids == at_tx_id]
-    
-    tx_plot <- plot_transcript(
-      start = 1,
-      end = width(current_tx),
-      strand = as.character(strand(current_tx)),
-      exon_starts = relative_exon_start,
-      exon_ends = relative_exon_end,
-      title = header
-    )
-    
-    at_tx_list[[at_tx_id]] <- list(current_tx = current_tx,
-                             start = 1,
-                             end = width(current_tx),
-                             relative_exon_start,
-                             relative_exon_end,
-                             header = header)
-    
-    
-    ggsave(
-      filename = paste0(at_tx_id, ".png"),
-      plot = tx_plot,
-      path = "out/top15/a_thaliana_tx_plots",
-      width = 10,
-      height = 2.5,
-      dpi = 300,
-      create.dir = TRUE
-    )
-  }
-}
-
-
 # getSeq ------------------------------------------------------------------
-
-zs_exon_spans_trim <- zs_exon_spans_trim[names(zs_exon_spans_trim) %in% paste0(busco_score_15$braker_gene_id, ".t1")]
 
 zs_tx_seqs <- getSeq(zs_genome_fa, zs_exon_spans_trim)
 stopifnot(
@@ -326,20 +237,17 @@ stopifnot(
   identical(width(zs_tx_seqs), width(zs_exon_spans_trim))
 )
 
+
 zs_tx_ids <- names(zs_exon_spans_trim)
-
-zs_gene_ids <- sub("\\.t1$", "", zs_tx_ids)
-busco_row_for_tx <- match(zs_gene_ids, busco_score_15$braker_gene_id)
-A_tha_locus <- busco_score_15$agic[busco_row_for_tx]
-stopifnot(!anyNA(A_tha_locus))
-
+A_tha_locus <- busco$agic
 zs_contig <- as.character(seqnames(zs_exon_spans_trim))
 zs_strand <- as.character(strand(zs_exon_spans_trim))
-zs_range  <- paste0(
-  start(zs_exon_spans_trim), "-",
+zs_range <- paste0(
+  start(zs_exon_spans_trim),
+  "-",
   end(zs_exon_spans_trim)
 )
-zs_n_exons_by_tx <- lengths(zs_exons_by_busco_tx[zs_tx_ids])
+zs_n_exons_by_tx <- lengths(zs_exons_by_busco_tx)
 
 zs_headers <- paste0(
   zs_tx_ids, "|",
@@ -351,26 +259,21 @@ zs_headers <- paste0(
   "flank:", flank_bp
 )
 
-stopifnot(length(zs_headers) == length(zs_tx_seqs))
-
 names(zs_tx_seqs) <- zs_headers
 
 if (write_fasta) {
-  writeXStringSet(zs_tx_seqs, filepath = "out/top15/tx_z_stapffii.fa")
+  writeXStringSet(zs_tx_seqs, "03-candidate-transcripts/out/tx_z_stapffii.fa")
 }
 
-zs_tx_list <- list()
 if (make_plots) {
   for (zs_tx_id in zs_tx_ids) {
+  
     current_tx <- zs_exon_spans_trim[zs_tx_id]
     region_start <- start(current_tx)
-    
     current_tx_exons <- zs_exons_by_busco_tx[[zs_tx_id]]
     relative_exon_start <- start(current_tx_exons) - region_start + 1
-    relative_exon_end   <- end(current_tx_exons) - region_start + 1
-    
-    header <- zs_headers[zs_tx_ids == zs_tx_id]
-    
+    relative_exon_end <- end(current_tx_exons) - region_start + 1
+    header <- zs_headers[startsWith(zs_headers, zs_tx_id)]
     tx_plot <- plot_transcript(
       start = 1,
       end = width(current_tx),
@@ -380,42 +283,50 @@ if (make_plots) {
       title = header
     )
     
-    zs_tx_list[[zs_tx_id]] <- list(current_tx = current_tx,
-                             start = 1,
-                             end = width(current_tx),
-                             relative_exon_start,
-                             relative_exon_end,
-                             header = header)
-    
-    ggsave(
-      filename = paste0(zs_tx_id, ".png"),
-      plot = tx_plot,
-      path = "out/top15/z_stapffii_tx_plots",
-      width = 10,
-      height = 2.5,
-      dpi = 300,
-      create.dir = TRUE
+    ggsave(filename = paste0(zs_tx_id, ".png"),
+           plot = tx_plot,
+           path = "03-candidate-transcripts/out/z_stapfii_tx_plots",
+           width = 10,
+           height = 2.5,
+           dpi = 300,
+           create.dir = TRUE
     )
   }
 }
 
 
-# save the tx_lists -------------------------------------------------------
 
-saveRDS(object = at_tx_list, "out/top15/at_tx_list.rds")
-saveRDS(object = zs_tx_list, "out/top15/zs_tx_list.rds")
+# Pairwise align ----------------------------------------------------------
 
-# -------------------------------------------------------------------------
+# Pairwise global alignment
+dna_matrix <- nucleotideSubstitutionMatrix(
+  match = 2,
+  mismatch = -1,
+  baseOnly = TRUE
+  )
 
-top15_align_ids <- paste0(busco_score_15$agic, ".1", "_vs_", busco_score_15$braker_gene_id, ".t1")
-
-top15_alignment <- alignment[top15_align_ids]
-
-dir.create(path = "out/top15/palignments")
-
-for (i in seq_len(length(top15_alignment))) {
-  filename <- names(top15_alignment)[i]
-  filepath <- paste0("out/top15/palignments/", filename)
-  writePairwiseAlignments(top15_alignment[[i]],
-                        file = filepath)
+pw_align_scores <- numeric(nrow(busco))
+pid_align_scores <- numeric(nrow(busco))
+for (i in seq_len(nrow(busco))) {
+  at_tx <- at_exon_spans_trim[paste0(busco$agic[i], ".1")]
+  at_tx_seq <- getSeq(at_genome, at_tx)
+  
+  zs_tx <- zs_exon_spans_trim[paste0(busco$braker_gene_id[i], ".t1")]
+  zs_tx_seq <- getSeq(zs_genome_fa, zs_tx)
+  
+  global_align <- pairwiseAlignment(
+    at_tx_seq,
+    zs_tx_seq,
+    type = "global",
+    substitutionMatrix = dna_matrix,
+    gapOpening = 5, gapExtension = 1
+    )
+  pw_align_scores[i] <- score(global_align)
+  pid_align_scores[i] <- pid(global_align)
 }
+
+busco$pw_align_scores <- pw_align_scores
+busco$pid_align_scores <- pid_align_scores
+
+
+readr::write_tsv(busco, file = "03-candidate-transcripts/out/conserved_go_annotated_braker.tsv")
