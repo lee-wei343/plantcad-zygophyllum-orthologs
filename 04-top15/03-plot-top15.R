@@ -7,6 +7,7 @@ library(Rsamtools)
 
 setwd("~/plantcad-zygophyllum-orthologs/")
 
+source("04-top15/R/plot-helpers.R")
 
 # color-blind palette -----------------------------------------------------
 
@@ -16,68 +17,6 @@ class_colors <- c("low" = palette[["blue"]],
                   "neutral" = palette[["gray"]],
                   "high" = palette[["vermillion"]])
 
-
-# functions ---------------------------------------------------------------
-
-add_pos <- function(df) {
-  df$pos <- seq_len(nrow(df))
-  return(df)
-}
-add_class <- function(df) {
-  df <- df |>
-    mutate(class = case_when(
-      is.na(MSIC) ~ NA_character_,
-      MSIC > 0.5 ~ "high",
-      MSIC < -0.5 ~ "low",
-      .default = "neutral"
-    )) |>
-    mutate(class = factor(class, levels = c("high", "neutral", "low")))
-  return(df)
-}
-add_rolling_mean <- function(df) {
-  rolling <- rollapply(data = df$MSIC, # change MSIC to IC
-                       width = list(-30:29),
-                       FUN = mean,
-                       partial = TRUE)
-  df$rolling_mean <- (rolling) 
-  return(df)
-}
-
-make_tx_index <- function(id_file) {
-  indexed <- list()
-  for (i in seq_along(id_file)) {
-    number <- str_split_1(id_file[i], ": ")[1]
-    header <- str_split_1(id_file[i], ": ")[2]
-    id <- str_split_1(header, "\\|")[1]
-    
-    indexed[id] <- number
-  }
-  return(indexed)
-}
-
-plot_transcript <- function(start, end, strand, exon_starts, exon_ends, title) {
-  # flip minus strand, so both line up 5' to '3 
-  if (strand == "-") {
-    flipped_starts <- start + end - exon_ends
-    flipped_ends <- start + end - exon_starts
-    exon_starts <- flipped_starts
-    exon_ends <- flipped_ends
-  }
-
-  ggplot() +
-    geom_segment(
-      aes(x = start, xend = end, y = 1, yend = 1)
-    ) +
-    geom_rect(
-      aes(xmin = exon_starts, xmax = exon_ends, ymin = 0.8, ymax = 1.2),
-      fill = palette[["gray"]]
-    ) +
-    scale_y_continuous(breaks = NULL) +
-    labs(y = NULL,
-         x = NULL,
-         title = title) +
-    theme_minimal()
-}
 
 # load --------------------------------------------------------------------
 
@@ -211,7 +150,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
     theme(axis.text.x = element_blank())
 
   current_at_tx_list <- at_tx_list[[current_agic_tx]]
-  tx_plot_at <- plot_transcript(
+  tx_plot_at <- plot_transcript_simple(
     start = current_at_tx_list$start,
     end = current_at_tx_list$end,
     strand = current_at_tx_list$strand,
@@ -223,7 +162,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
     coord_cartesian(xlim = x_range)
 
   current_zs_tx_list <- zs_tx_list[[current_bgc_tx]]
-  tx_plot_zs <- plot_transcript(
+  tx_plot_zs <- plot_transcript_simple(
     start = current_zs_tx_list$start,
     end = current_zs_tx_list$end,
     strand = current_zs_tx_list$strand,

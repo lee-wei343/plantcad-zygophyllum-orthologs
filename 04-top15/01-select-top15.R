@@ -10,44 +10,7 @@ flank_bp <- 1000L
 write_fasta <- TRUE
 make_plots <- TRUE
 
-plot_transcript <- function(start, end, strand, exon_starts, exon_ends, title) {
-  if (strand == "+") {
-    direction <- 1
-  } else {
-    direction <- -1
-  }
-  
-  arrow_spacing <- 1000
-  arrow_length <- 20
-  arrow_starts <- seq(
-    from = start,
-    to = end,
-    by = arrow_spacing
-  )
-  arrows <- data.frame(
-    x = arrow_starts,
-    xend = arrow_starts + (direction * arrow_length)
-  )
-  
-  ggplot() +
-    geom_segment(
-      aes(x = start, xend = end, y = 1, yend = 1)
-    ) +
-    geom_segment(
-      data = arrows,
-      aes(x = x, xend = xend, y = 1, yend = 1),
-      arrow = arrow(length = unit(2, "mm"))
-    ) +
-    geom_rect(
-      aes(xmin = exon_starts, xmax = exon_ends, ymin = 0.8, ymax = 1.2),
-      fill = "blue"
-    ) +
-    scale_y_continuous(breaks = NULL) +
-    labs(x = "position (bp)",
-         y = NULL,
-         title = title) +
-    theme_minimal()
-}
+source("04-top15/R/plot-helpers.R")
 
 # Arabidopsis thaliana ----------------------------------------------------
 
@@ -286,7 +249,7 @@ if (make_plots) {
     
     header <- headers[at_tx_ids == at_tx_id]
     
-    tx_plot <- plot_transcript(
+    tx_plot <- plot_transcript_arrows(
       start = 1,
       end = width(current_tx),
       strand = as.character(strand(current_tx)),
@@ -372,7 +335,7 @@ if (make_plots) {
     
     header <- zs_headers[zs_tx_ids == zs_tx_id]
     
-    tx_plot <- plot_transcript(
+    tx_plot <- plot_transcript_arrows(
       start = 1,
       end = width(current_tx),
       strand = as.character(strand(current_tx)),
