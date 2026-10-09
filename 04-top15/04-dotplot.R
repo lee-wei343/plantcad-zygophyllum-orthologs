@@ -36,16 +36,18 @@ tx_pair_keys <- read_tsv(
     agic_tx = paste0(agic, ".1"),
     bgc_tx = paste0(braker_gene_id, ".t1")
   ) |>
-  select(agic_tx, bgc_tx)
+  dplyr::select(agic_tx, bgc_tx)
 
 at_tx_list <- readRDS(file = "04-top15/out/at_tx_list.rds")
 zs_tx_list <- readRDS(file = "04-top15/out/zs_tx_list.rds")
 
+busco_top15 <- read_tsv("04-top15/out/busco_top15.tsv")
+
 # filter 42 genes to the 15 actually used
 tx_pair_keys <- tx_pair_keys |>
   filter(
-    agic_tx %in% names(at_file_ids_pcad1_index),
-    bgc_tx %in% names(zs_file_ids_pcad1_index)
+    agic_tx %in% paste0(busco_top15$agic, ".1"),
+    bgc_tx %in% paste0(busco_top15$braker_gene_id, ".t1")
   )
 
 at_genome_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
@@ -85,28 +87,43 @@ process_pair <- function(agic_tx, bgc_tx) {
     bgc_tx
   )
   
-  blastn_tsv <- file.path(blast_dir, paste0(pair_name, ".tsv"))
-  hsps <- run_blastn(
+  blastn_tsv_path <- file.path(blast_dir, paste0(pair_name, ".tsv"))
+  blastn_tsv <- run_blastn(
     at_fa,
     zs_fa,
-    blastn_tsv
+    blastn_tsv_path
   )
+  
+  current_q_tx_list <- at_tx_list[[agic_tx]]
+  rel_qstart <- current_q_tx_list$start
+  rel_qend <- current_q_tx_list$end
+  rel_q_exon_start <- current_q_tx_list$relative_exon_start
+  rel_q_exon_end <- current_q_tx_list$relative_exon_end
+  
+  current_s_tx_list <- zs_tx_list[[bgc_tx]]
+  rel_sstart <- current_s_tx_list$start
+  rel_send <- current_s_tx_list$end
+  rel_s_exon_start <- current_s_tx_list$relative_exon_start
+  rel_s_exon_end <- current_s_tx_list$relative_exon_end
 
-  # plot
-  # TODO: write plot_dotplot_marginal() in R/plot-helpers.R
-  # p <- plot_dotplot_marginal(hsps, msic_at, msic_zs)
-  # ggsave(file.path(plot_dir, paste0(pair_name, ".png")), p,
-  #        dpi = 300, width = 10, height = 10)
+  dotplot <- dotplot_bn(
+    blastn_tsv = blastn_tsv,
+    rel_qstart = rel_qstart,
+    rel_qend = rel_qend,
+    rel_sstart = rel_sstart,
+    rel_send = rel_send,
+    rel_q_exon_start = rel_q_exon_start,
+    rel_q_exon_end = rel_q_exon_end,
+    rel_s_exon_start = rel_s_exon_start,
+    rel_s_exon_end = rel_s_exon_end
+  )
+  ggsave(file.path(plot_dir, paste0(pair_name, ".png")), dotplot,
+         dpi = 300, width = 10, height = 10)
   
-  message("boop")
-  
-  a <- read_tsv(file = blastn_tsv)
   
 }
-
-a <- read_tsv(file = "04-top15/out/blastn/AT1G71220.1_with_g20167.t1.tsv")
 
 
 # run ---------------------------------------------------------------------
 
-walk2(tx_pair_keys$agic_tx[1], tx_pair_keys$bgc_tx[1], process_pair)
+walk2(tx_pair_keys$agic_tx, tx_pair_keys$bgc_tx, process_pair)

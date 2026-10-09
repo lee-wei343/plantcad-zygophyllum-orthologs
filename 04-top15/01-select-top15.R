@@ -152,6 +152,7 @@ for (i in seq_len(nrow(busco))) {
   at_tx_seq <- getSeq(at_genome, at_tx)
   
   zs_tx_id <- paste0(busco$braker_gene_id[i], ".t1")
+  zs_tx_id <- paste0(busco$braker_gene_id[i], ".t1")
   zs_tx <- zs_exon_spans_trim[zs_tx_id]
   zs_tx_seq <- getSeq(zs_genome_fa, zs_tx)
   
@@ -174,7 +175,8 @@ busco$pid_align_scores <- pid_align_scores
 busco_score_15 <- busco |>
   dplyr::slice_max(pw_align_scores, n = 15)
 
-dir.create(path = "04-top15/out")
+dir.create(path = "04-top15/out", showWarnings = FALSE, recursive = TRUE)
+write_tsv(busco_score_15, "04-top15/out/busco_top15.tsv")
 
 
 
