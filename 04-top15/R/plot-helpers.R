@@ -159,7 +159,6 @@ dotplot_bn <- function(
   palette <- palette.colors(palette = "Okabe-Ito", names = TRUE)
   
   main <- ggplot(blastn_tsv) +
-    # TODO: correct the exon starts and ends for the minus strands
     annotate("rect",
              xmin = -Inf, xmax = Inf,
              ymin = rel_q_exon_start, ymax = rel_q_exon_end,
@@ -207,4 +206,14 @@ dotplot_bn <- function(
     theme(plot.margin = margin(0, 0, 0, 0))
 } 
 
-
+flip_rel_exons <- function(strand, start, end, exon_starts, exon_ends) {
+  # flip minus strand, so both line up 5' to '3 
+  if (strand == "-") {
+    flipped_starts <- start + end - exon_ends
+    flipped_ends <- start + end - exon_starts
+    exon_starts <- flipped_starts
+    exon_ends <- flipped_ends
+  }
+  list(exon_starts = exon_starts,
+       exon_ends = exon_ends)
+}

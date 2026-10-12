@@ -97,14 +97,25 @@ process_pair <- function(agic_tx, bgc_tx) {
   current_q_tx_list <- at_tx_list[[agic_tx]]
   rel_qstart <- current_q_tx_list$start
   rel_qend <- current_q_tx_list$end
-  rel_q_exon_start <- current_q_tx_list$relative_exon_start
-  rel_q_exon_end <- current_q_tx_list$relative_exon_end
+  q_exons <- flip_rel_exons(strand = current_q_tx_list$strand,
+                 start = rel_qstart,
+                 end = rel_qend,
+                 exon_starts = current_q_tx_list$relative_exon_start,
+                 exon_ends = current_q_tx_list$relative_exon_end)
+  rel_q_exon_start <- q_exons$exon_starts
+  rel_q_exon_end <- q_exons$exon_ends
+  
   
   current_s_tx_list <- zs_tx_list[[bgc_tx]]
   rel_sstart <- current_s_tx_list$start
   rel_send <- current_s_tx_list$end
-  rel_s_exon_start <- current_s_tx_list$relative_exon_start
-  rel_s_exon_end <- current_s_tx_list$relative_exon_end
+  s_exons <- flip_rel_exons(strand = current_s_tx_list$strand,
+                 start = rel_sstart,
+                 end = rel_send,
+                 exon_starts = current_s_tx_list$relative_exon_start,
+                 exon_ends = current_s_tx_list$relative_exon_end)
+  rel_s_exon_start <- s_exons$exon_starts
+  rel_s_exon_end <- s_exons$exon_ends
 
   dotplot <- dotplot_bn(
     blastn_tsv = blastn_tsv,
