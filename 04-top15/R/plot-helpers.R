@@ -150,34 +150,68 @@ run_blastn <- function(query_fa, subject_fa, out_tsv,
 }
 
 
+
+# blastp ------------------------------------------------------------------
+
+run_blastp <- function(query_fa, subject_fa, out_tsv,
+                       env = "plantcad-zygophyllum-orthologs") {
+  outfmt <- paste("6", paste(blast_cols, collapse = " "))
+  
+  system2(
+    "conda",
+    c(
+      "run", "-n", env, "blastp",
+      "-query", query_fa, "-subject", subject_fa, "-task", "blastp",
+      "-outfmt", shQuote(outfmt),
+      "-out", out_tsv
+      )
+    )
+  hsps <- read_tsv(out_tsv, col_names = blast_cols, show_col_types = FALSE)
+  write_tsv(hsps, out_tsv)
+  hsps
+}
+
+
 # improved dotplot --------------------------------------------------------
 
-dotplot_bn <- function(
-    blastn_tsv, rel_qstart, rel_qend, rel_sstart, rel_send, rel_q_exon_start,
-    rel_q_exon_end, rel_s_exon_start, rel_s_exon_end
+# exon bands are skipped when the exon arguments are NULL (protein dotplots)
+dotplot <- function(
+    blastx_tsv, rel_qstart, rel_qend, rel_sstart, rel_send,
+    rel_q_exon_start = NULL, rel_q_exon_end = NULL,
+    rel_s_exon_start = NULL, rel_s_exon_end = NULL,
+    unit = "bp"
 ) {
   palette <- palette.colors(palette = "Okabe-Ito", names = TRUE)
   
-  main <- ggplot(blastn_tsv) +
-    annotate("rect",
+  q_exon_bands <- NULL
+  if (!is.null(rel_q_exon_start)) {
+    q_exon_bands <- annotate("rect",
              xmin = -Inf, xmax = Inf,
              ymin = rel_q_exon_start, ymax = rel_q_exon_end,
              fill = palette[["vermillion"]], alpha = 0.3
-    ) +
-    annotate("rect",
+    )
+  }
+  s_exon_bands <- NULL
+  if (!is.null(rel_s_exon_start)) {
+    s_exon_bands <- annotate("rect",
              xmin = rel_s_exon_start, xmax = rel_s_exon_end,
              ymin = -Inf, ymax = Inf,
              fill = palette[["blue"]], alpha = 0.3
-    ) +
+    )
+  }
+  
+  main <- ggplot(blastx_tsv) +
+    q_exon_bands +
+    s_exon_bands +
     geom_segment(aes(y = qstart, yend = qend, x = sstart, xend = send)) +
     coord_cartesian(xlim = c(rel_sstart, rel_send), ylim = c(rel_qstart, rel_qend)) +
     theme(legend.position = "none") +
     labs(
-      y = "A. thaliana (bp)",
-      x = "Z. stapffii (bp)"
+      y = paste0("A. thaliana (", unit, ")"),
+      x = paste0("Z. stapffii (", unit, ")")
     )
   
-  top <- ggplot(blastn_tsv) +
+  top <- ggplot(blastx_tsv) +
     geom_segment(aes(x = sstart, xend = send, y = pident, yend = pident)) +
     xlim(rel_sstart, rel_send) +
     guides(x = "none") +
@@ -187,7 +221,7 @@ dotplot_bn <- function(
     ) +
     theme_minimal()
   
-  right <- ggplot(blastn_tsv) +
+  right <- ggplot(blastx_tsv) +
     geom_segment(aes(y = qstart, yend = qend, x = pident, xend = pident)) +
     guides(y = "none") +
     theme(
@@ -216,4 +250,113 @@ flip_rel_exons <- function(strand, start, end, exon_starts, exon_ends) {
   }
   list(exon_starts = exon_starts,
        exon_ends = exon_ends)
+}
+
+
+blast_dotplot <- function(
+  at_genome_fa,
+  zs_genome_fa,
+  at_tx_list,
+  zs_tx_list,
+  agic_tx,
+  bgc_tx,
+  type,
+  outdir,
+  plot_dir,
+  at_cds_by_tx,
+  zs_cds_by_tx
+  ) {
+  if (!type %in% c("blastn", "blastp")) {
+    stop("type must be either blastn or blastp")
+  }
+  
+  pair_name <- paste0(agic_tx, "_with_", bgc_tx)
+  
+  if (type == "blastn") {
+    at_fa <- write_fasta(
+      getSeq(
+        at_genome_fa,
+        at_tx_list[[agic_tx]]$current_tx
+      ),
+      outdir,
+      agic_tx
+    )
+    zs_fa <- write_fasta(
+      getSeq(
+        zs_genome_fa,
+        zs_tx_list[[bgc_tx]]$current_tx
+      ),
+      outdir,
+      bgc_tx
+    )
+    
+    blastn_tsv_path <- file.path(outdir, paste0(pair_name, ".tsv"))
+    blastx_tsv <- run_blastn(
+      at_fa,
+      zs_fa,
+      blastn_tsv_path
+    )
+    
+    current_q_tx_list <- at_tx_list[[agic_tx]]
+    rel_qstart <- current_q_tx_list$start
+    rel_qend <- current_q_tx_list$end
+    q_exons <- flip_rel_exons(strand = current_q_tx_list$strand,
+                   start = rel_qstart,
+                   end = rel_qend,
+                   exon_starts = current_q_tx_list$relative_exon_start,
+                   exon_ends = current_q_tx_list$relative_exon_end)
+    
+    current_s_tx_list <- zs_tx_list[[bgc_tx]]
+    rel_sstart <- current_s_tx_list$start
+    rel_send <- current_s_tx_list$end
+    s_exons <- flip_rel_exons(strand = current_s_tx_list$strand,
+                   start = rel_sstart,
+                   end = rel_send,
+                   exon_starts = current_s_tx_list$relative_exon_start,
+                   exon_ends = current_s_tx_list$relative_exon_end)
+    
+    dotplot <- dotplot(
+      blastx_tsv = blastx_tsv,
+      rel_qstart = rel_qstart,
+      rel_qend = rel_qend,
+      rel_sstart = rel_sstart,
+      rel_send = rel_send,
+      rel_q_exon_start = q_exons$exon_starts,
+      rel_q_exon_end = q_exons$exon_ends,
+      rel_s_exon_start = s_exons$exon_starts,
+      rel_s_exon_end = s_exons$exon_ends,
+      unit = "bp"
+    )
+  } else if (type == "blastp") {
+    at_prot_seq <- translate(
+      extractTranscriptSeqs(at_genome_fa, at_cds_by_tx[agic_tx]),
+      if.fuzzy.codon = "X"
+    )
+    zs_prot_seq <- translate(
+      extractTranscriptSeqs(zs_genome_fa, zs_cds_by_tx[bgc_tx]),
+      if.fuzzy.codon = "X"
+    )
+    
+    at_fa <- write_fasta(at_prot_seq, outdir, paste0(agic_tx, "_protein"))
+    zs_fa <- write_fasta(zs_prot_seq, outdir, paste0(bgc_tx, "_protein"))
+    
+    blastp_tsv_path <- file.path(outdir, paste0(pair_name, ".tsv"))
+    blastx_tsv <- run_blastp(
+      at_fa,
+      zs_fa,
+      blastp_tsv_path
+    )
+    
+    dotplot <- dotplot(
+      blastx_tsv = blastx_tsv,
+      rel_qstart = 1,
+      rel_qend = width(at_prot_seq),
+      rel_sstart = 1,
+      rel_send = width(zs_prot_seq),
+      unit = "aa"
+    )
+  }
+  
+  ggsave(file.path(plot_dir, paste0(pair_name, "_", type, ".png")), dotplot,
+         dpi = 300, width = 10, height = 10)
 }

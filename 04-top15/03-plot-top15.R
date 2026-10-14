@@ -121,7 +121,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
   msic_long_zs <- bind_rows(msic_table_zs, .id = "run") |>
     mutate(run = factor(run, levels = names(msic_table_zs)))
 
-  x_range  <- c(1, max(msic_long_at$pos))
+  x_range  <- c(1, max(msic_long_at$pos, msic_long_zs$pos))
   x_scale  <- scale_x_continuous(expand = expansion(mult = 0.01))
 
   msic_plot_at <- ggplot(msic_long_at, aes(x = pos, y = MSIC)) +

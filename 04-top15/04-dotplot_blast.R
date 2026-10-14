@@ -3,6 +3,10 @@ library(tidyverse)
 library(stringr)
 library(patchwork)
 library(Rsamtools)
+library(txdbmaker)
+library(rtracklayer)
+library(GenomicRanges)
+library(Biostrings)
 
 setwd("~/plantcad-zygophyllum-orthologs/")
 source("04-top15/R/plot-helpers.R")
@@ -11,9 +15,11 @@ source("04-top15/R/plot-helpers.R")
 # settings ----------------------------------------------------------------
 
 top15_dir <- "04-top15/out"
-blast_dir <- file.path(top15_dir, "blastn")
+blastn_dir <- file.path(top15_dir, "blastn")
+blastp_dir <- file.path(top15_dir, "blastp")
 plot_dir <- file.path(top15_dir, "dot_plot")
-dir.create(blast_dir, showWarnings = FALSE, recursive = TRUE)
+dir.create(blastn_dir, showWarnings = FALSE, recursive = TRUE)
+dir.create(blastp_dir, showWarnings = FALSE, recursive = TRUE)
 dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
 
 
@@ -63,74 +69,51 @@ if (!file.exists(paste0(zs_genome_path, ".fai"))) {
 zs_genome_fa <- FaFile(zs_genome_path)
 
 
+at_tx_db <- makeTxDbFromGFF(
+  "data/A_thaliana/Arabidopsis_thaliana.TAIR10.63.gff3",
+  format = "gff3"
+  )
+
+zs_gff <- import("data/Z_stapfii/braker.gff3")
+zs_gff$transcript_id <- NULL
+zs_gff$Name <- ifelse(zs_gff$type == "mRNA", zs_gff$ID, NA_character_)
+zs_tx_db <- makeTxDbFromGRanges(zs_gff)
+
+at_cds_by_tx <- cdsBy(at_tx_db, by = "tx", use.names = TRUE)
+zs_cds_by_tx <- cdsBy(zs_tx_db, by = "tx", use.names = TRUE)
+
 # functions ---------------------------------------------------------------
 
 process_pair <- function(agic_tx, bgc_tx) {
   pair_name <- paste0(agic_tx, "_with_", bgc_tx)
   message("processing ", pair_name)
-
-  # sequences + blastn
-  at_fa <- write_fasta(
-    getSeq(
-      at_genome_fa,
-      at_tx_list[[agic_tx]]$current_tx
-    ),
-    blast_dir,
-    agic_tx
-  )
-  zs_fa <- write_fasta(
-    getSeq(
-      zs_genome_fa,
-      zs_tx_list[[bgc_tx]]$current_tx
-    ),
-    blast_dir,
-    bgc_tx
+  
+  blast_dotplot(
+    at_genome_fa = at_genome_fa,
+    zs_genome_fa = zs_genome_fa,
+    at_tx_list = at_tx_list,
+    zs_tx_list = zs_tx_list,
+    agic_tx = agic_tx,
+    bgc_tx = bgc_tx,
+    type = "blastn",
+    outdir = blastn_dir,
+    plot_dir = plot_dir
   )
   
-  blastn_tsv_path <- file.path(blast_dir, paste0(pair_name, ".tsv"))
-  blastn_tsv <- run_blastn(
-    at_fa,
-    zs_fa,
-    blastn_tsv_path
+  
+  blast_dotplot(
+    at_genome_fa = at_genome_fa,
+    zs_genome_fa = zs_genome_fa,
+    at_tx_list = at_tx_list,
+    zs_tx_list = zs_tx_list,
+    agic_tx = agic_tx,
+    bgc_tx = bgc_tx,
+    type = "blastp",
+    outdir = blastp_dir,
+    plot_dir = plot_dir,
+    at_cds_by_tx = at_cds_by_tx,
+    zs_cds_by_tx = zs_cds_by_tx
   )
-  
-  current_q_tx_list <- at_tx_list[[agic_tx]]
-  rel_qstart <- current_q_tx_list$start
-  rel_qend <- current_q_tx_list$end
-  q_exons <- flip_rel_exons(strand = current_q_tx_list$strand,
-                 start = rel_qstart,
-                 end = rel_qend,
-                 exon_starts = current_q_tx_list$relative_exon_start,
-                 exon_ends = current_q_tx_list$relative_exon_end)
-  rel_q_exon_start <- q_exons$exon_starts
-  rel_q_exon_end <- q_exons$exon_ends
-  
-  
-  current_s_tx_list <- zs_tx_list[[bgc_tx]]
-  rel_sstart <- current_s_tx_list$start
-  rel_send <- current_s_tx_list$end
-  s_exons <- flip_rel_exons(strand = current_s_tx_list$strand,
-                 start = rel_sstart,
-                 end = rel_send,
-                 exon_starts = current_s_tx_list$relative_exon_start,
-                 exon_ends = current_s_tx_list$relative_exon_end)
-  rel_s_exon_start <- s_exons$exon_starts
-  rel_s_exon_end <- s_exons$exon_ends
-
-  dotplot <- dotplot_bn(
-    blastn_tsv = blastn_tsv,
-    rel_qstart = rel_qstart,
-    rel_qend = rel_qend,
-    rel_sstart = rel_sstart,
-    rel_send = rel_send,
-    rel_q_exon_start = rel_q_exon_start,
-    rel_q_exon_end = rel_q_exon_end,
-    rel_s_exon_start = rel_s_exon_start,
-    rel_s_exon_end = rel_s_exon_end
-  )
-  ggsave(file.path(plot_dir, paste0(pair_name, ".png")), dotplot,
-         dpi = 300, width = 10, height = 10)
-  
   
 }
 
