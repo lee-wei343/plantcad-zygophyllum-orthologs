@@ -2,7 +2,10 @@ data/
 out/
 01-busco/busco_downloads/
 02-orthofinder/Results_*/
+02-orthofinder/orthofinder_*/
 literature/
+05-additional-genes/ogs_tree/
+05-additional-genes/*.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
