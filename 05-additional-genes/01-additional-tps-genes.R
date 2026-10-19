@@ -6,6 +6,7 @@ library(stringr)
 library(txdbmaker)
 library(tidyverse)
 setwd("~/plantcad-zygophyllum-orthologs/")
+source("R/extract-helpers.R")
 source("04-top15/R/plot-helpers.R")
 
 
@@ -59,11 +60,6 @@ tps_orthos <- s9 |>
 
 
 # functions ---------------------------------------------------------------
-
-get_exons_by_tx <- function(gff_path) {
-  tx_db <- makeTxDbFromGFF(gff_path, format = "gff3")
-  exons_by_tx <- exonsBy(tx_db, by = "tx", use.name = TRUE)
-}
 
 add_metadata_col <- function(exons_by_tx, col, col_name, match_by) {
   idx <- match(match_by, names(exons_by_tx))

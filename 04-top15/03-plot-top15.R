@@ -7,6 +7,7 @@ library(Rsamtools)
 
 setwd("~/plantcad-zygophyllum-orthologs/")
 
+source("R/extract-helpers.R")
 source("04-top15/R/plot-helpers.R")
 
 # color-blind palette -----------------------------------------------------
@@ -49,23 +50,15 @@ tx_pair_keys <- tx_pair_keys |>
 
 # -------------------------------------------------------------------------
 
-at_genome_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
-if (!file.exists(paste0(at_genome_path, ".fai"))) {
-  indexFa(at_genome_path)
-}
-at_genome_fa <- FaFile(at_genome_path)
+at_genome_fa <- load_genome(
+  genome_path = "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
+)$fasta
 
-zs_genome_path <- "data/Z_stapfii/Z_stapfii_genome.fa"
-if (!file.exists(paste0(zs_genome_path, ".fai"))) {
-  indexFa(zs_genome_path)
-}
-zs_genome_fa <- FaFile(zs_genome_path)
+zs_genome_fa <- load_genome(
+  genome_path = "data/Z_stapfii/Z_stapfii_genome.fa"
+)$fasta
 
 for (i in seq_len(nrow(tx_pair_keys))) {
-  
-  # BREAK HERE
-  if (i != 1) break
-  
   
   current_agic_tx <- tx_pair_keys$agic_tx[i]
   at_agic_tx_pcad1 <- read_csv(
@@ -202,10 +195,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
   )
   print(pw_align)
   
-  break
-  
 # dotplot AI generated! ---------------------------------------------------
-
   
   current_at_tx <- at_tx_list[[current_agic_tx]]$current_tx
   current_zs_tx <- zs_tx_list[[current_bgc_tx]]$current_tx

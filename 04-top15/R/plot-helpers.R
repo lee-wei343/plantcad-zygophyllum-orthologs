@@ -67,47 +67,6 @@ plot_transcript_simple <- function(start, end, strand, exon_starts, exon_ends,
     theme_minimal()
 }
 
-plot_transcript_arrows <- function(start, end, strand, exon_starts, exon_ends,
-                                   title
-                                   ) {
-  if (strand == "+") {
-    direction <- 1
-  } else {
-    direction <- -1
-  }
-  
-  arrow_spacing <- 1000
-  arrow_length <- 20
-  arrow_starts <- seq(
-    from = start,
-    to = end,
-    by = arrow_spacing
-  )
-  arrows <- data.frame(
-    x = arrow_starts,
-    xend = arrow_starts + (direction * arrow_length)
-  )
-  
-  ggplot() +
-    geom_segment(
-      aes(x = start, xend = end, y = 1, yend = 1)
-    ) +
-    geom_segment(
-      data = arrows,
-      aes(x = x, xend = xend, y = 1, yend = 1),
-      arrow = arrow(length = unit(2, "mm"))
-    ) +
-    geom_rect(
-      aes(xmin = exon_starts, xmax = exon_ends, ymin = 0.8, ymax = 1.2),
-      fill = "blue"
-    ) +
-    scale_y_continuous(breaks = NULL) +
-    labs(x = "position (bp)",
-         y = NULL,
-         title = title) +
-    theme_minimal()
-}
-
 
 # MSIC --------------------------------------------------------------------
 

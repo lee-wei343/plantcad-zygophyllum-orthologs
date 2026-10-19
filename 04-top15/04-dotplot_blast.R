@@ -9,6 +9,7 @@ library(GenomicRanges)
 library(Biostrings)
 
 setwd("~/plantcad-zygophyllum-orthologs/")
+source("R/extract-helpers.R")
 source("04-top15/R/plot-helpers.R")
 
 
@@ -56,17 +57,15 @@ tx_pair_keys <- tx_pair_keys |>
     bgc_tx %in% paste0(busco_top15$braker_gene_id, ".t1")
   )
 
-at_genome_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
-if (!file.exists(paste0(at_genome_path, ".fai"))) {
-  indexFa(at_genome_path)
-}
-at_genome_fa <- FaFile(at_genome_path)
+at_genome_fa <- load_genome(
+  genome_path = "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
+)$fasta
 
-zs_genome_path <- "data/Z_stapfii/Z_stapfii_genome.fa"
-if (!file.exists(paste0(zs_genome_path, ".fai"))) {
-  indexFa(zs_genome_path)
-}
-zs_genome_fa <- FaFile(zs_genome_path)
+zs_genome <- load_genome(
+  genome_path = "data/Z_stapfii/Z_stapfii_genome.fa",
+  gff_path = "data/Z_stapfii/braker.gff3"
+)
+zs_genome_fa <- zs_genome$fasta
 
 
 at_tx_db <- makeTxDbFromGFF(
@@ -74,7 +73,8 @@ at_tx_db <- makeTxDbFromGFF(
   format = "gff3"
   )
 
-zs_gff <- import("data/Z_stapfii/braker.gff3")
+# TxDb of the BRAKER gff: transcript names come from Name, not transcript_id
+zs_gff <- zs_genome$gff
 zs_gff$transcript_id <- NULL
 zs_gff$Name <- ifelse(zs_gff$type == "mRNA", zs_gff$ID, NA_character_)
 zs_tx_db <- makeTxDbFromGRanges(zs_gff)
