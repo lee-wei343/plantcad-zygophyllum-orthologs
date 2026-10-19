@@ -67,7 +67,8 @@ walk(ogs, \(og) {
   tree <- make_pruned_tree(
     lines = lines,
     orthogroup = og,
-    prune = "^(o.*sativa*|a.*thaliana).*"
+    prune = "^o.*sativa*"
     )
   write_tree_plot(tree = tree, name = paste0(og, "_pruned"), out_dir = out_dir)
 })
+
