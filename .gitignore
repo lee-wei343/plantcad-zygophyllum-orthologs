@@ -6,6 +6,12 @@ out/
 literature/
 05-additional-genes/ogs_tree/
 05-additional-genes/*.txt
+04-top15/tx_msic_predictions/*
+*.csv
+*.tsv
+*.fa
+*.txt
+*.png
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
