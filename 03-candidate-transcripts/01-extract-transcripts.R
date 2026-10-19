@@ -5,120 +5,90 @@ library(ggplot2)
 library(pwalign)
 
 setwd("~/plantcad-zygophyllum-orthologs/")
+source("03-candidate-transcripts/R/extract-helpers.R")
+
+
+# setup -------------------------------------------------------------------
 
 flank_bp <- 1000L
 write_fasta <- TRUE
 make_plots <- TRUE
 
-plot_transcript <- function(start, end, strand, exon_starts, exon_ends, title) {
-  if (strand == "+") {
-    direction <- 1
-  } else {
-    direction <- -1
-  }
-  
-  arrow_spacing <- 1000
-  arrow_length <- 20
-  arrow_starts <- seq(
-    from = start,
-    to = end,
-    by = arrow_spacing
-  )
-  arrows <- data.frame(
-    x = arrow_starts,
-    xend = arrow_starts + (direction * arrow_length)
-  )
-  
-  ggplot() +
-    geom_segment(
-      aes(x = start, xend = end, y = 1, yend = 1)
-    ) +
-    geom_segment(
-      data = arrows,
-      aes(x = x, xend = xend, y = 1, yend = 1),
-      arrow = arrow(length = unit(2, "mm"))
-    ) +
-    geom_rect(
-      aes(xmin = exon_starts, xmax = exon_ends, ymin = 0.8, ymax = 1.2),
-      fill = "blue"
-    ) +
-    scale_y_continuous(breaks = NULL) +
-    labs(x = "position (bp)",
-         y = NULL,
-         title = title) +
-    theme_minimal()
-}
+
+# generally load ----------------------------------------------------------
+
+busco <- readr::read_tsv("01-busco/out/conserved_go_annotated.tsv")
 
 # Arabidopsis thaliana ----------------------------------------------------
 
 # at = Arabidopsis thaliana
 # Arabidopsis Genome Initiative Code
-busco <- readr::read_tsv("01-busco/out/conserved_go_annotated.tsv")
+
+
+# load AT -----------------------------------------------------------------
 
 at_genome_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
-if (!file.exists(paste0(at_genome_path, ".fai"))) {
-  indexFa(at_genome_path)
-}
-at_genome <- FaFile(at_genome_path)
-
 at_gff_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.63.gff3"
-at_gff <- import(at_gff_path)
+
+
+at_genome <- load_genome(genome_path = at_genome_path, gff_path = at_gff_path)
 
 at_txdb <- makeTxDbFromGFF(file = at_gff_path)
 at_exons_by_tx <- exonsBy(at_txdb, by = "tx", use.name = TRUE)
 
+
+# Filter AT ---------------------------------------------------------------
+
 at_exons_by_busco_tx <- at_exons_by_tx[
   names(at_exons_by_tx) %in% paste0(busco$agic, ".1")
-  ]
+]
 
-at_exon_spans_pre <- unlist(range(at_exons_by_busco_tx))
 
-at_exon_spans <- at_exon_spans_pre + flank_bp
-# stoping if contig or chromosome ends before the flank range
-stopifnot(all(at_exon_spans_pre + flank_bp * 2 == width(at_exon_spans)))
+# get Seq with header -----------------------------------------------------
 
-# If there is nothing to trim, they remain same legnth
-at_exon_spans_trim <- trim(at_exon_spans)
-stopifnot(identical(at_exon_spans, at_exon_spans_trim))
+# GRanges
+at_ex_by_tx_flank <- add_flanks(
+  exons_by_tx = at_exons_by_busco_tx,
+  flank_bp = flank_bp,
+  genome_fa = at_genome$fasta
+  )
 
-at_tx_seqs <- getSeq(at_genome, at_exon_spans_trim)
+# DNA-string set
+at_tx_seqs <- getSeq(at_genome$fasta, at_ex_by_tx_flank)
 stopifnot(
-  length(at_exon_spans_trim) == length(at_tx_seqs),
-  identical(width(at_exon_spans_trim), width(at_tx_seqs))
+  length(at_ex_by_tx_flank) == length(at_tx_seqs),
+  identical(width(at_ex_by_tx_flank), width(at_tx_seqs))
 )
 
-at_tx_ids <- names(at_exon_spans_trim)
-at_chrom <- as.character(seqnames(at_exon_spans_trim))
-at_strand <- as.character(strand(at_exon_spans_trim))
-at_range <- paste0(
-  start(at_exon_spans_trim), "-",
-  end(at_exon_spans_trim)
+headers <- make_header(
+  exon_spans = at_ex_by_tx_flank,
+  exons_listed = at_exons_by_busco_tx,
+  flank_bp = flank_bp
 )
-at_n_exons_by_tx <- lengths(at_exons_by_busco_tx)
-
-headers <- paste0(
-  at_tx_ids, "|",
-  "chrom:", at_chrom, "|",
-  at_strand, "|",
-  at_range, "|",
-  "n_exons:", at_n_exons_by_tx, "|",
-  "flank:", flank_bp
-)
-
 names(at_tx_seqs) <- headers
 
+
+# write FASTA -------------------------------------------------------------
+
 if (write_fasta) {
-  writeXStringSet(at_tx_seqs, filepath = "03-candidate-transcripts/out/tx_a_thaliana.fa")
+  writeXStringSet(
+    at_tx_seqs,
+    filepath = "03-candidate-transcripts/out/tx_a_thaliana.fa"
+    )
 }
 
+
+# Plot Seqs ---------------------------------------------------------------
+
 if (make_plots) {
-  for (at_tx_id in at_tx_ids) {
-    current_tx <- at_exon_spans_trim[at_tx_id]
+  for (at_tx_id in names(at_ex_by_tx_flank)) {
+    current_tx <- at_ex_by_tx_flank[at_tx_id]
     region_start <- start(current_tx)
     current_tx_exons <- at_exons_by_busco_tx[[at_tx_id]]
     relative_exon_start <- start(current_tx_exons) - region_start + 1
     relative_exon_end <- end(current_tx_exons) - region_start + 1
     header <- headers[startsWith(headers, at_tx_id)]
+    
     tx_plot <- plot_transcript(
       start = 1,
       end = width(current_tx),
@@ -127,14 +97,15 @@ if (make_plots) {
       exon_ends = relative_exon_end,
       title = header
     )
-    
-    ggsave(filename = paste0(at_tx_id, ".png"),
-           plot = tx_plot,
-           path = "03-candidate-transcripts/out/a_thaliana_tx_plots",
-           width = 10,
-           height = 2.5,
-           dpi = 300,
-           create.dir = TRUE
+
+    ggsave(
+      filename = paste0(at_tx_id, ".png"),
+      plot = tx_plot,
+      path = "03-candidate-transcripts/out/a_thaliana_tx_plots",
+      width = 10,
+      height = 2.5,
+      dpi = 300,
+      create.dir = TRUE
     )
   }
 }
@@ -156,13 +127,13 @@ zs_genes <- zs_gff[zs_gff$type == "gene"]
 # quick look --------------------------------------------------------------
 
 # contig_lengths <- seqlengths(seqinfo(genome_fa))
-# 
+#
 # # n contigs
 # length(contig_lengths)
-# 
+#
 # which.max(contig_lengths)
 # max(contig_lengths)
-# 
+#
 # table(gff$type)
 
 
@@ -183,7 +154,7 @@ busco_hits <- GRanges(
 # start and end of BUSCO and Braker might differ, but they will overlap
 hits <- findOverlaps(busco_hits, zs_genes)
 
-# Check if sussy
+# Check if suspicious
 # Each BUSCO matches one Braker
 # It does not:
 # matches no Braker;
@@ -267,7 +238,6 @@ if (write_fasta) {
 
 if (make_plots) {
   for (zs_tx_id in zs_tx_ids) {
-  
     current_tx <- zs_exon_spans_trim[zs_tx_id]
     region_start <- start(current_tx)
     current_tx_exons <- zs_exons_by_busco_tx[[zs_tx_id]]
@@ -282,18 +252,18 @@ if (make_plots) {
       exon_ends = relative_exon_end,
       title = header
     )
-    
-    ggsave(filename = paste0(zs_tx_id, ".png"),
-           plot = tx_plot,
-           path = "03-candidate-transcripts/out/z_stapfii_tx_plots",
-           width = 10,
-           height = 2.5,
-           dpi = 300,
-           create.dir = TRUE
+
+    ggsave(
+      filename = paste0(zs_tx_id, ".png"),
+      plot = tx_plot,
+      path = "03-candidate-transcripts/out/z_stapfii_tx_plots",
+      width = 10,
+      height = 2.5,
+      dpi = 300,
+      create.dir = TRUE
     )
   }
 }
-
 
 
 # Pairwise align ----------------------------------------------------------
@@ -303,24 +273,24 @@ dna_matrix <- nucleotideSubstitutionMatrix(
   match = 2,
   mismatch = -1,
   baseOnly = TRUE
-  )
+)
 
 pw_align_scores <- numeric(nrow(busco))
 pid_align_scores <- numeric(nrow(busco))
 for (i in seq_len(nrow(busco))) {
-  at_tx <- at_exon_spans_trim[paste0(busco$agic[i], ".1")]
-  at_tx_seq <- getSeq(at_genome, at_tx)
-  
+  at_tx <- at_ex_by_tx_flank[paste0(busco$agic[i], ".1")]
+  at_tx_seq <- getSeq(at_genome$fasta, at_tx)
+
   zs_tx <- zs_exon_spans_trim[paste0(busco$braker_gene_id[i], ".t1")]
   zs_tx_seq <- getSeq(zs_genome_fa, zs_tx)
-  
+
   global_align <- pairwiseAlignment(
     at_tx_seq,
     zs_tx_seq,
     type = "global",
     substitutionMatrix = dna_matrix,
     gapOpening = 5, gapExtension = 1
-    )
+  )
   pw_align_scores[i] <- score(global_align)
   pid_align_scores[i] <- pid(global_align)
 }
