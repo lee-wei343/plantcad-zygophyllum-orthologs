@@ -126,6 +126,7 @@ dna_matrix <- nucleotideSubstitutionMatrix(
 alignment <- list()
 pw_align_scores <- numeric(nrow(busco))
 pid_align_scores <- numeric(nrow(busco))
+
 for (i in seq_len(nrow(busco))) {
   at_tx_id <- paste0(busco$agic[i], ".1")
   at_tx <- at_exon_spans_trim[at_tx_id]
