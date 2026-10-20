@@ -60,7 +60,9 @@ zs_genome_fa <- load_genome(
 
 for (i in seq_len(nrow(tx_pair_keys))) {
   
+  # thaliana
   current_agic_tx <- tx_pair_keys$agic_tx[i]
+  
   at_agic_tx_pcad1 <- read_csv(
     paste0(
       "04-top15/out/a_thaliana_top15_PCAD1_results/a_thaliana_top15_PCAD1_scores_table",
@@ -68,6 +70,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
       ".csv"
     )
   )
+  
   at_agic_tx_pcad2s <- read_csv(
     paste0(
       "04-top15/out/a_thaliana_top15_PCAD2S_results/a_thaliana_top15_PCAD2S_scores_table",
@@ -76,7 +79,24 @@ for (i in seq_len(nrow(tx_pair_keys))) {
     )
   )
   
+  at_agic_tx_pcad2l <- read_csv(
+    "04-top15/out/a_thaliana_top15_PCAD2L_results/msic.csv"
+  ) |>
+    mutate(agic = str_extract(header, "^[^|]+")) |>
+    filter(agic == current_agic_tx) |>
+    dplyr::rename(MSIC = msic)
+  
+  at_agic_tx_bot1s <- read_csv(
+    "04-top15/out/a_thaliana_top15_Botanic1S_results/msic.csv"
+    ) |>
+    mutate(agic = str_extract(header, "^[^|]+")) |>
+    filter(agic == current_agic_tx) |>
+    dplyr::rename(MSIC = msic)
+  
+  
+  # Z_stapffii
   current_bgc_tx <- tx_pair_keys$bgc_tx[i]
+  
   zs_bgc_tx_pcad1 <- read_csv(
     paste0(
       "04-top15/out/z_stapffii_top15_PCAD1_results/z_stapffii_top15_PCAD1_scores_table",
@@ -84,6 +104,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
       ".csv"
     )
   )
+  
   zs_bgc_tx_pcad2s <- read_csv(
     paste0(
       "04-top15/out/z_stapffii_top15_PCAD2S_results/z_stapffii_top15_PLANTCAD2S_scores_table",
@@ -92,21 +113,46 @@ for (i in seq_len(nrow(tx_pair_keys))) {
     )
   )
   
+  zs_bgc_tx_pcad2l <- read_csv(
+    "04-top15/out/z_stapffii_top15_PCAD2L_result/msic.csv"
+  ) |>
+    mutate(bgc = str_extract(header, "^[^|]+")) |>
+    filter(bgc == current_bgc_tx) |>
+    dplyr::rename(MSIC = msic)
+  
+  zs_bgc_tx_bot1s <- read_csv(
+    "04-top15/out/z_stapffii_top15_Botanic1S_result/msic.csv"
+  ) |>
+    mutate(bgc = str_extract(header, "^[^|]+")) |>
+    filter(bgc == current_bgc_tx) |>
+    dplyr::rename(MSIC = msic)
+  
+  
   at_agic_tx_pcad1 <- add_rolling_mean(add_class(add_pos(at_agic_tx_pcad1)))
   at_agic_tx_pcad2s <- add_rolling_mean(add_class(add_pos(at_agic_tx_pcad2s)))
-
+  at_agic_tx_pcad2l <- add_rolling_mean(add_class(add_pos(at_agic_tx_pcad2l)))
+  at_agic_tx_bot1s <- add_rolling_mean(add_class(add_pos(at_agic_tx_bot1s)))
+  
+  
   zs_bgc_tx_pcad1 <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_pcad1)))
   zs_bgc_tx_pcad2s <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_pcad2s)))
+  zs_bgc_tx_pcad2l <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_pcad2l)))
+  zs_bgc_tx_bot1s <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_bot1s)))
 
   msic_table_at <- list(
-    AT_PCAD1 = at_agic_tx_pcad1,
-    AT_PCAD2S = at_agic_tx_pcad2s
+    PCAD1 = at_agic_tx_pcad1,
+    PCAD2S = at_agic_tx_pcad2s,
+    PCAD2L = at_agic_tx_pcad2l,
+    BOT1S = at_agic_tx_bot1s
   )
 
   msic_table_zs <- list(
-    ZS_PCAD1 = zs_bgc_tx_pcad1,
-    ZS_PCAD2S = zs_bgc_tx_pcad2s
+    PCAD1 = zs_bgc_tx_pcad1,
+    PCAD2S = zs_bgc_tx_pcad2s,
+    PCAD2L = zs_bgc_tx_pcad2l,
+    BOT1S = zs_bgc_tx_bot1s
     )
+  
 
   msic_long_at <- bind_rows(msic_table_at, .id = "run") |>
     mutate(run = factor(run, levels = names(msic_table_at)))
@@ -171,7 +217,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
 
   combined_plot
 
-  multi_path <- "04-top15/out/multi_plot"
+  multi_path <- "04-top15/out/multi_plot2"
   dir.create(multi_path, showWarnings = FALSE)
   ggsave(paste0(multi_path, "/", current_agic_tx, "_with_", current_bgc_tx, ".png"),
          plot = combined_plot,
@@ -179,21 +225,21 @@ for (i in seq_len(nrow(tx_pair_keys))) {
          height = 7,
          width = 12)
   
-  current_at_tx <- at_tx_list[[current_agic_tx]]$current_tx
-  current_zs_tx <- zs_tx_list[[current_bgc_tx]]$current_tx
-  nuc_sub_matr <- nucleotideSubstitutionMatrix(match = 2,
-                                               mismatch = -1,
-                                               baseOnly = TRUE)
-
-  pw_align <- pairwiseAlignment(
-    pattern = getSeq(at_genome_fa, current_at_tx),
-    subject = getSeq(zs_genome_fa, current_zs_tx),
-    type = "local",
-    substitutionMatrix = nuc_sub_matr,
-    gapOpening = 3,
-    gapExtension = 1
-  )
-  print(pw_align)
+  # current_at_tx <- at_tx_list[[current_agic_tx]]$current_tx
+  # current_zs_tx <- zs_tx_list[[current_bgc_tx]]$current_tx
+  # nuc_sub_matr <- nucleotideSubstitutionMatrix(match = 2,
+  #                                              mismatch = -1,
+  #                                              baseOnly = TRUE)
+  # 
+  # pw_align <- pairwiseAlignment(
+  #   pattern = getSeq(at_genome_fa, current_at_tx),
+  #   subject = getSeq(zs_genome_fa, current_zs_tx),
+  #   type = "local",
+  #   substitutionMatrix = nuc_sub_matr,
+  #   gapOpening = 3,
+  #   gapExtension = 1
+  # )
+  # print(pw_align)
 }
 
   
