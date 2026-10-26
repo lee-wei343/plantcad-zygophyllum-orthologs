@@ -16,11 +16,7 @@ source("04-top15/R/plot-helpers.R")
 # settings ----------------------------------------------------------------
 
 out_dir <- "05-additional-genes"
-blastn_dir <- file.path(out_dir, "blastn")
-blastp_dir <- file.path(out_dir, "blastp")
 plot_dir <- file.path(out_dir, "dot_plot")
-dir.create(blastn_dir, showWarnings = FALSE, recursive = TRUE)
-dir.create(blastp_dir, showWarnings = FALSE, recursive = TRUE)
 dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
 
 at_genome_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
@@ -65,7 +61,7 @@ zs_genome <- load_genome(
 )
 
 
-# make x_tx_by_cds for blastp ---------------------------------------------
+# make x_tx_by_cds for  --------------------------------------------------
 
 at_tx_db <- makeTxDbFromGFF(
   at_gff_path,
@@ -137,13 +133,9 @@ tx_pair_keys <- tx_pair_keys |>
 
 # -------------------------------------------------------------------------
 
-at_genome_fa <- load_genome(
-  genome_path = "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
-)$fasta
+at_genome_fa <- at_genome$fasta
 
-zs_genome_fa <- load_genome(
-  genome_path = "data/Z_stapfii/Z_stapfii_genome.fa"
-)$fasta
+zs_genome_fa <- zs_genome$fasta
 
 for (i in seq_len(nrow(tx_pair_keys))) {
   
