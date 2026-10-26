@@ -21,15 +21,20 @@ make_pruned_tree <- function(lines, orthogroup, prune) {
 }
 
 write_tree_plot <- function(tree, name, out_dir) {
-  png(
-    file.path(out_dir, paste0(name, "_tree.png")),
-    width = 8,
-    height = 5,
-    units = "in",
-    res = 300
+  
+  if (Ntip(tree) > 10) {
+    height_in <- Ntip(tree) * 0.2 + 1
+  } else {
+    height_in <- 7
+  }
+  
+  pdf(
+    file.path(out_dir, paste0(name, "_tree.pdf")),
+    width = 7,
+    height = height_in,
     )
+  on.exit(dev.off())
   plot(tree)
-  dev.off()
 }
 
 # example -----------------------------------------------------------------
@@ -67,7 +72,7 @@ walk(ogs, \(og) {
   tree <- make_pruned_tree(
     lines = lines,
     orthogroup = og,
-    prune = "^o.*sativa*"
+    prune = "^(o. |Oryza)sativa"
     )
   write_tree_plot(tree = tree, name = paste0(og, "_pruned"), out_dir = out_dir)
 })

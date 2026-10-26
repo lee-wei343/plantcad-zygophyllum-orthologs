@@ -95,10 +95,12 @@ if (save_fasta) {
 # Plot Seqs ---------------------------------------------------------------
 
 if (make_plots) {
-  plot_transcripts(
-    exon_spans = at_ex_by_tx_flank,
-    exons_by_tx = at_exons_by_busco_tx,
-    headers = headers,
+  plot_tx_list(
+    tx_list = make_tx_list(
+      exon_spans = at_ex_by_tx_flank,
+      exons_by_tx = at_exons_by_busco_tx,
+      headers = headers
+    ),
     out_dir = "03-candidate-transcripts/out/a_thaliana_tx_plots"
   )
 }
@@ -203,10 +205,12 @@ if (save_fasta) {
 }
 
 if (make_plots) {
-  plot_transcripts(
-    exon_spans = zs_ex_by_tx_flank,
-    exons_by_tx = zs_exons_by_busco_tx,
-    headers = zs_headers,
+  plot_tx_list(
+    tx_list = make_tx_list(
+      exon_spans = zs_ex_by_tx_flank,
+      exons_by_tx = zs_exons_by_busco_tx,
+      headers = zs_headers
+    ),
     out_dir = "03-candidate-transcripts/out/z_stapfii_tx_plots"
   )
 }

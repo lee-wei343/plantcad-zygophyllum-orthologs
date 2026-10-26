@@ -171,7 +171,14 @@ dotplot <- function(
     )
   
   top <- ggplot(blastx_tsv) +
-    geom_segment(aes(x = sstart, xend = send, y = pident, yend = pident)) +
+    geom_segment(
+      aes(
+        x = sstart,
+        xend = send,
+        y = pident,
+        yend = pident
+        )
+      ) +
     xlim(rel_sstart, rel_send) +
     guides(x = "none") +
     labs(x = NULL, y = "% identity") +
@@ -181,7 +188,16 @@ dotplot <- function(
     theme_minimal()
   
   right <- ggplot(blastx_tsv) +
-    geom_segment(aes(y = qstart, yend = qend, x = pident, xend = pident)) +
+    geom_segment(
+      aes(
+        y = qstart,
+        yend = qend,
+        x = pident,
+        xend = pident
+        )
+      ) +
+    # the right plot has less space, so rounding, preventing overlapp
+    scale_x_continuous(labels = \(x) round(x)) +
     guides(y = "none") +
     theme(
       legend.position = "none",

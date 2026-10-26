@@ -122,7 +122,8 @@ plot_transcript_arrows <- function(start, end, strand, exon_starts, exon_ends,
     theme_minimal()
 }
 
-plot_transcripts <- function(exon_spans, exons_by_tx, headers, out_dir) {
+# one entry per transcript: flanked range plus exon coords relative to it
+make_tx_list <- function(exon_spans, exons_by_tx, headers) {
   stopifnot(length(headers) == length(exon_spans))
   tx_list <- list()
 
@@ -135,15 +136,6 @@ plot_transcripts <- function(exon_spans, exons_by_tx, headers, out_dir) {
     relative_exon_start <- start(current_tx_exons) - region_start + 1
     relative_exon_end   <- end(current_tx_exons) - region_start + 1
 
-    tx_plot <- plot_transcript_arrows(
-      start = 1,
-      end = width(current_tx),
-      strand = as.character(strand(current_tx)),
-      exon_starts = relative_exon_start,
-      exon_ends = relative_exon_end,
-      title = headers[i]
-    )
-
     tx_list[[tx_id]] <- list(current_tx = current_tx,
                              start = 1,
                              end = width(current_tx),
@@ -151,6 +143,24 @@ plot_transcripts <- function(exon_spans, exons_by_tx, headers, out_dir) {
                              relative_exon_start = relative_exon_start,
                              relative_exon_end = relative_exon_end,
                              header = headers[i])
+  }
+
+  tx_list
+}
+
+# saves one <tx_id>.png per transcript in tx_list to out_dir
+plot_tx_list <- function(tx_list, out_dir) {
+  for (tx_id in names(tx_list)) {
+    tx <- tx_list[[tx_id]]
+
+    tx_plot <- plot_transcript_arrows(
+      start = tx$start,
+      end = tx$end,
+      strand = tx$strand,
+      exon_starts = tx$relative_exon_start,
+      exon_ends = tx$relative_exon_end,
+      title = tx$header
+    )
 
     ggsave(
       filename = paste0(tx_id, ".png"),

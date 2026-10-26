@@ -213,7 +213,7 @@ for (i in seq_len(nrow(tx_pair_keys))) {
     coord_cartesian(xlim = x_range)
 
   combined_plot <- tx_plot_at / msic_plot_at / tx_plot_zs / msic_plot_zs +
-    plot_layout(heights = c(1, 4, 1, 4), guides = "collect")
+    plot_layout(heights = c(1, 8, 1, 8), guides = "collect")
 
   combined_plot
 

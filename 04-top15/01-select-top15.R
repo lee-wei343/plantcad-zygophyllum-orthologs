@@ -180,14 +180,13 @@ if (save_fasta) {
   writeXStringSet(at_tx_seqs, filepath = "04-top15/out/tx_a_thaliana.fa")
 }
 
-at_tx_list <- list()
+at_tx_list <- make_tx_list(
+  exon_spans = at_exon_spans_trim,
+  exons_by_tx = at_exons_by_busco_tx,
+  headers = headers
+)
 if (make_plots) {
-  at_tx_list <- plot_transcripts(
-    exon_spans = at_exon_spans_trim,
-    exons_by_tx = at_exons_by_busco_tx,
-    headers = headers,
-    out_dir = "04-top15/out/a_thaliana_tx_plots"
-  )
+  plot_tx_list(at_tx_list, out_dir = "04-top15/out/a_thaliana_tx_plots")
 }
 
 
@@ -221,14 +220,13 @@ if (save_fasta) {
   writeXStringSet(zs_tx_seqs, filepath = "04-top15/out/tx_z_stapffii.fa")
 }
 
-zs_tx_list <- list()
+zs_tx_list <- make_tx_list(
+  exon_spans = zs_exon_spans_trim,
+  exons_by_tx = zs_exons_by_busco_tx,
+  headers = zs_headers
+)
 if (make_plots) {
-  zs_tx_list <- plot_transcripts(
-    exon_spans = zs_exon_spans_trim,
-    exons_by_tx = zs_exons_by_busco_tx,
-    headers = zs_headers,
-    out_dir = "04-top15/out/z_stapffii_tx_plots"
-  )
+  plot_tx_list(zs_tx_list, out_dir = "04-top15/out/z_stapffii_tx_plots")
 }
 
 
