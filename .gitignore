@@ -12,6 +12,7 @@ literature/
 *.fa
 *.txt
 *.png
+*.rds
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -235,3 +236,4 @@ __marimo__/
 # R session files
 .RData
 .Rhistory
+*.rds
