@@ -37,7 +37,7 @@ at_file_ids_pcad2s_index <- make_tx_index(at_file_ids_pcad2s)
 
 zs_tx_list <- readRDS(file = "04-top15/out/zs_tx_list.rds")
 
-zs_file_ids_pcad1 <- readLines("04-top15/out/z_stapffii_top15_PCAD1_results//fileIDs.txt")
+zs_file_ids_pcad1 <- readLines("04-top15/out/z_stapffii_top15_PCAD1_results/fileIDs.txt")
 zs_file_ids_pcad1_index <- make_tx_index(zs_file_ids_pcad1)
 
 zs_file_ids_pcad2s <- readLines("04-top15/out/z_stapffii_top15_PCAD2S_results/fileIDs.txt")
