@@ -23,7 +23,7 @@ p1e_sup <- p1e |>
   count(species, is_busco, region) |>
   mutate(
     proportion = n / sum(n),
-    label = paste0(n, "\n", scales::percent(proportion, accuracy = 0.1)),
+    label = scales::percent(proportion, accuracy = 0.1),
     x = c(low = -thr, mid = 0, high = thr)[as.character(region)],
     hjust = c(low = 1.1, mid = 0.5, high = -0.1)[as.character(region)],
     .by = c(species, is_busco)
@@ -67,7 +67,7 @@ p2se_sup <- p2se |>
   count(species, is_busco, region) |>
   mutate(
     proportion = n / sum(n),
-    label = paste0(n, "\n", scales::percent(proportion, accuracy = 0.1)),
+    label = scales::percent(proportion, accuracy = 0.1),
     x = c(low = -thr, mid = 0, high = thr)[as.character(region)],
     hjust = c(low = 1.1, mid = 0.5, high = -0.1)[as.character(region)],
     .by = c(species, is_busco)
@@ -94,3 +94,4 @@ ggplot(data = p2se) +
   ) +
   labs(y = "relative frequency", x = "MSIC") +
   labs(title = "PCAD2S exons")
+

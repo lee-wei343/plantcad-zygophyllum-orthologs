@@ -30,7 +30,7 @@ get_blastp_by_tx <- function(dir_path) {
 top15 <- get_blastp_by_tx(file.path("04-top15", "out", "blastp"))
 tps <- get_blastp_by_tx(file.path("05-additional-genes", "blastp"))
 
-pident_by_tx <- row_bind(top15, tps)
+pident_by_tx <- bind_rows(top15, tps)
 
 msic_blastp <- msic |>
   left_join(pident_by_tx, by = "tx", relationship = "many-to-one")
