@@ -19,11 +19,12 @@ get_blastp_by_tx <- function(dir_path) {
     )
   
   best <- blastp |>
-    slice_max(bitscore, n = 1, with_ties = FALSE, by = c(at_tx, zs_tx))
+    slice_max(bitscore, n = 1, with_ties = FALSE, by = c(at_tx, zs_tx)) |>
+    mutate(pair = paste(at_tx, zs_tx, sep = "__"))
   
   pident_by_tx <- bind_rows(
-    best |> select(tx = at_tx, pident),
-    best |> select(tx = zs_tx, pident)
+    best |> select(tx = at_tx, pair, pident),
+    best |> select(tx = zs_tx, pair, pident)
   )
 }
 
@@ -33,6 +34,7 @@ tps <- get_blastp_by_tx(file.path("05-additional-genes", "blastp"))
 pident_by_tx <- bind_rows(top15, tps)
 
 msic_blastp <- msic |>
-  left_join(pident_by_tx, by = "tx", relationship = "many-to-one")
+  left_join(pident_by_tx, by = "tx", relationship = "many-to-one") |>
+  select(-p_max, -ic, -argmax_base, -argmax_match, -header)
 
 write_csv(msic_blastp, file = "06-model-comparison/msic_blastp.csv")
