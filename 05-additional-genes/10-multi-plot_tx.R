@@ -16,8 +16,8 @@ source("04-top15/R/plot-helpers.R")
 # settings ----------------------------------------------------------------
 
 out_dir <- "05-additional-genes"
-plot_dir <- file.path(out_dir, "dot_plot")
-dir.create(plot_dir, showWarnings = FALSE, recursive = TRUE)
+multi_path <- file.path(out_dir, "out", "multi_plot")
+dir.create(multi_path, showWarnings = FALSE, recursive = TRUE)
 
 at_genome_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.dna.toplevel.fa"
 at_gff_path <- "data/A_thaliana/Arabidopsis_thaliana.TAIR10.63.gff3"
@@ -108,129 +108,67 @@ stopifnot(
 
 # load --------------------------------------------------------------------
 
-tx_pair_keys <- read_tsv("03-candidate-transcripts/out/conserved_go_annotated_braker_pairchecked.tsv") |>
-  mutate(agic_tx = paste0(agic, ".1"),
-         bgc_tx = paste0(braker_gene_id, ".t1")) |>
-  select(agic_tx, bgc_tx)
+results_dir <- function(species, model) {
+  file.path(out_dir, "out", paste0(species, "_tps_", model, "_results"))
+}
 
-at_file_ids_pcad1 <- readLines("04-top15/out/a_thaliana_top15_PCAD1_results/fileIDs.txt")
-at_file_ids_pcad1_index <- make_tx_index(at_file_ids_pcad1)
+# PlantCAD1 / PlantCAD2-small: LLMPipeGUI, one csv per transcript
+read_msic_llmpipe <- function(species, model, tx_id) {
+  dir <- results_dir(species, model)
+  read_msic(
+    results_dir = dir,
+    file_prefix = paste0(species, "_tps_", model, "_scores_table"),
+    index = make_tx_index(readLines(file.path(dir, "fileIDs.txt"))),
+    tx_id = tx_id
+  )
+}
 
-at_file_ids_pcad2s <- readLines("04-top15/out/a_thaliana_top15_PCAD2S_results/fileIDs.txt")
-at_file_ids_pcad2s_index <- make_tx_index(at_file_ids_pcad2s)
+# PlantCAD2-large / Botanic1: one msic.csv for all transcripts
+read_msic_combined <- function(species, model, tx_id) {
+  read_csv(
+    file.path(results_dir(species, model), "msic.csv"),
+    show_col_types = FALSE
+  ) |>
+    mutate(tx = str_extract(header, "^[^|]+")) |>
+    filter(tx == tx_id) |>
+    dplyr::rename(MSIC = msic) |>
+    add_pos() |>
+    add_class() |>
+    add_rolling_mean()
+}
 
+read_all_models <- function(species, tx_id) {
+  list(
+    PCAD1 = read_msic_llmpipe(species, "PCAD1", tx_id),
+    PCAD2S = read_msic_llmpipe(species, "PCAD2S", tx_id),
+    PCAD2L = read_msic_combined(species, "PCAD2L", tx_id),
+    BOT1S = read_msic_combined(species, "Botanic1S", tx_id),
+    BOT1L = read_msic_combined(species, "Botanic1L", tx_id)
+  )
+}
 
-zs_file_ids_pcad1 <- readLines("04-top15/out/z_stapffii_top15_PCAD1_results//fileIDs.txt")
-zs_file_ids_pcad1_index <- make_tx_index(zs_file_ids_pcad1)
+# every model must have scored the same bases, or the facets are misaligned
+check_same_bases <- function(msic_table, expected_length) {
+  refs <- map(msic_table, \(df) tolower(df$ref))
+  stopifnot(
+    all(lengths(refs) == expected_length),
+    all(map_lgl(refs, \(ref) identical(ref, refs[[1]])))
+  )
+}
 
-zs_file_ids_pcad2s <- readLines("04-top15/out/z_stapffii_top15_PCAD2S_results/fileIDs.txt")
-zs_file_ids_pcad2s_index <- make_tx_index(zs_file_ids_pcad2s)
-
-# filter 42 genes to the 15 actually used
-tx_pair_keys <- tx_pair_keys |>
-  filter(agic_tx %in% names(at_file_ids_pcad1_index),
-         bgc_tx %in% names(zs_file_ids_pcad1_index))
 
 # -------------------------------------------------------------------------
 
-at_genome_fa <- at_genome$fasta
-
-zs_genome_fa <- zs_genome$fasta
-
 for (i in seq_len(nrow(tx_pair_keys))) {
-  
-  # thaliana
+
   current_agic_tx <- tx_pair_keys$agic_tx[i]
-  
-  at_agic_tx_pcad1 <- read_csv(
-    paste0(
-      "04-top15/out/a_thaliana_top15_PCAD1_results/a_thaliana_top15_PCAD1_scores_table",
-      at_file_ids_pcad1_index[current_agic_tx],
-      ".csv"
-    )
-  )
-  
-  at_agic_tx_pcad2s <- read_csv(
-    paste0(
-      "04-top15/out/a_thaliana_top15_PCAD2S_results/a_thaliana_top15_PCAD2S_scores_table",
-      at_file_ids_pcad2s_index[current_agic_tx],
-      ".csv"
-    )
-  )
-  
-  at_agic_tx_pcad2l <- read_csv(
-    "04-top15/out/a_thaliana_top15_PCAD2L_results/msic.csv"
-  ) |>
-    mutate(agic = str_extract(header, "^[^|]+")) |>
-    filter(agic == current_agic_tx) |>
-    dplyr::rename(MSIC = msic)
-  
-  at_agic_tx_bot1s <- read_csv(
-    "04-top15/out/a_thaliana_top15_Botanic1S_results/msic.csv"
-    ) |>
-    mutate(agic = str_extract(header, "^[^|]+")) |>
-    filter(agic == current_agic_tx) |>
-    dplyr::rename(MSIC = msic)
-  
-  
-  # Z_stapffii
   current_bgc_tx <- tx_pair_keys$bgc_tx[i]
-  
-  zs_bgc_tx_pcad1 <- read_csv(
-    paste0(
-      "04-top15/out/z_stapffii_top15_PCAD1_results/z_stapffii_top15_PCAD1_scores_table",
-      zs_file_ids_pcad1_index[current_bgc_tx],
-      ".csv"
-    )
-  )
-  
-  zs_bgc_tx_pcad2s <- read_csv(
-    paste0(
-      "04-top15/out/z_stapffii_top15_PCAD2S_results/z_stapffii_top15_PLANTCAD2S_scores_table",
-      zs_file_ids_pcad2s_index[current_bgc_tx],
-      ".csv"
-    )
-  )
-  
-  zs_bgc_tx_pcad2l <- read_csv(
-    "04-top15/out/z_stapffii_top15_PCAD2L_result/msic.csv"
-  ) |>
-    mutate(bgc = str_extract(header, "^[^|]+")) |>
-    filter(bgc == current_bgc_tx) |>
-    dplyr::rename(MSIC = msic)
-  
-  zs_bgc_tx_bot1s <- read_csv(
-    "04-top15/out/z_stapffii_top15_Botanic1S_result/msic.csv"
-  ) |>
-    mutate(bgc = str_extract(header, "^[^|]+")) |>
-    filter(bgc == current_bgc_tx) |>
-    dplyr::rename(MSIC = msic)
-  
-  
-  at_agic_tx_pcad1 <- add_rolling_mean(add_class(add_pos(at_agic_tx_pcad1)))
-  at_agic_tx_pcad2s <- add_rolling_mean(add_class(add_pos(at_agic_tx_pcad2s)))
-  at_agic_tx_pcad2l <- add_rolling_mean(add_class(add_pos(at_agic_tx_pcad2l)))
-  at_agic_tx_bot1s <- add_rolling_mean(add_class(add_pos(at_agic_tx_bot1s)))
-  
-  
-  zs_bgc_tx_pcad1 <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_pcad1)))
-  zs_bgc_tx_pcad2s <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_pcad2s)))
-  zs_bgc_tx_pcad2l <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_pcad2l)))
-  zs_bgc_tx_bot1s <- add_rolling_mean(add_class(add_pos(zs_bgc_tx_bot1s)))
 
-  msic_table_at <- list(
-    PCAD1 = at_agic_tx_pcad1,
-    PCAD2S = at_agic_tx_pcad2s,
-    PCAD2L = at_agic_tx_pcad2l,
-    BOT1S = at_agic_tx_bot1s
-  )
+  msic_table_at <- read_all_models("a_thaliana", current_agic_tx)
+  msic_table_zs <- read_all_models("z_stapffii", current_bgc_tx)
 
-  msic_table_zs <- list(
-    PCAD1 = zs_bgc_tx_pcad1,
-    PCAD2S = zs_bgc_tx_pcad2s,
-    PCAD2L = zs_bgc_tx_pcad2l,
-    BOT1S = zs_bgc_tx_bot1s
-    )
+  check_same_bases(msic_table_at, at_tx_list[[current_agic_tx]]$end)
+  check_same_bases(msic_table_zs, zs_tx_list[[current_bgc_tx]]$end)
   
 
   msic_long_at <- bind_rows(msic_table_at, .id = "run") |>
@@ -296,8 +234,6 @@ for (i in seq_len(nrow(tx_pair_keys))) {
 
   combined_plot
 
-  multi_path <- "04-top15/out/multi_plot2"
-  dir.create(multi_path, showWarnings = FALSE)
   ggsave(paste0(multi_path, "/", current_agic_tx, "_with_", current_bgc_tx, ".png"),
          plot = combined_plot,
          dpi = 300,
