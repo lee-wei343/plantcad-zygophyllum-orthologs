@@ -18,7 +18,9 @@ per_tx <- msic_blastp |>
 ggplot(data = per_tx, aes(x = pident, y = mean_msic, colour = species)) +
   geom_point() +
   geom_smooth(method = "lm", se = FALSE) +
-  theme_minimal()
+  theme_minimal() +
+  labs(y = "Average MSIC per transcript",
+       x = "Percentage identity of best BLASTp segment per transcript")
 
 
 pair <- per_tx |>
@@ -33,4 +35,3 @@ ggplot(data = pair, aes(x = a_thaliana, y = z_stapffii)) +
 
 c <- cor.test(pair$z_stapffii, pair$a_thaliana, method = "spearman")
 
-c
