@@ -24,3 +24,10 @@ Genomes, annotations and results are not included. The scripts expect them under
 ## Software
 
 BUSCO 6.1.0, OrthoFinder 3.1.5, BLAST 2.17.0, R 4.5.2 with Bioconductor 3.22 (Biostrings, GenomicRanges, rtracklayer, txdbmaker, pwalign, ape) and the tidyverse.
+
+The conda environments are in `envs/`: `plantcad-zygophyllum-orthologs.yml` for the R scripts, BUSCO and BLAST, and `orthofinder.yml` for OrthoFinder. To use them run:
+
+```bash
+conda env create -f envs/plantcad-zygophyllum-orthologs.yml
+conda env create -f envs/orthofinder.yml
+```
