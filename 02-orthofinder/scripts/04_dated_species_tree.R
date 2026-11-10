@@ -57,7 +57,7 @@ plot_dated_tree <- function(tree, node_labels, edge_labels, file) {
 
 # exact topology of the whiteboard: rosids is one polytomy
 whiteboard <- read.tree(text = paste0(
-  "(Physcomitrella_patens:483,",
+  "(Physcomitrium_patens:483,",
   "(Oryza_sativa:160,",
   "(Vitis_vinifera:118,Populus_trichocarpa:118,",
   "(Tetraena_mongolica:20.8,Zygophyllum_stapffii:20.8):97.2,",
@@ -66,7 +66,7 @@ whiteboard <- read.tree(text = paste0(
 
 # the species used in the thesis, without V. vinifera and P. trichocarpa
 dated <- read.tree(text = paste0(
-  "(Physcomitrella_patens:483,",
+  "(Physcomitrium_patens:483,",
   "(Oryza_sativa:160,",
   "((Tetraena_mongolica:20.8,Zygophyllum_stapffii:20.8):87.2,",
   "Arabidopsis_thaliana:108):52):323);"
